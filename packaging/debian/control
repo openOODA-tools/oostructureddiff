@@ -1,0 +1,14 @@
+Source: oostructureddiff
+Section: utils
+Priority: optional
+Maintainer: openOODA-tools <ops@openooda.org>
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+
+Package: oostructureddiff
+Architecture: amd64
+Depends: libc6
+Description: TREE DIFFER
+ AST and JSON structural tree differ highlighting node mutations and key shifts.
+ Capability-bounded openOODA utility with zero ambient authority,
+ oote theme palettes, and native Model Context Protocol (MCP) surface.
