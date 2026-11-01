@@ -1,0 +1,81 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build the release asset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: oostructureddiff
+
+      - uses: actions/checkout@v4
+        with:
+          repository: openOODA/oodac
+          path: oodac
+
+      - uses: actions/checkout@v4
+        with:
+          repository: openOODA/oodar
+          path: oodar
+
+      - uses: actions/checkout@v4
+        with:
+          repository: openOODA/std
+          path: std
+
+      - name: Require compiler and clang
+        working-directory: ${{ github.workspace }}
+        run: |
+          test -x oodac/bin/oodac || chmod +x oodac/bin/oodac
+          if ! command -v clang >/dev/null; then sudo apt-get update && sudo apt-get install -y clang; fi
+          command -v clang >/dev/null || { echo "clang is required for the build"; exit 1; }
+
+      - name: Build the oodar runtime
+        working-directory: ${{ github.workspace }}
+        run: make -C oodar/scripts -f Makefile modular
+
+      - name: Build, verify, and test
+        working-directory: ${{ github.workspace }}/oostructureddiff
+        env:
+          OODA_COMPILER: ${{ github.workspace }}/oodac/bin/oodac
+          OODA_FS_READDIR: ${{ github.workspace }}
+          OODA_FS_WRITEDIR: ${{ github.workspace }}
+          OODA_NO_JAIL: "1"
+        run: |
+          make build
+          make verify
+          make test
+
+      - name: Stage the release asset
+        working-directory: ${{ github.workspace }}
+        run: |
+          test -x oostructureddiff/dist/oostructureddiff || { echo "::error::dist/oostructureddiff was not produced"; exit 1; }
+          cp oostructureddiff/dist/oostructureddiff oostructureddiff-linux-x86_64
+          sha256sum oostructureddiff-linux-x86_64 > oostructureddiff-linux-x86_64.sha256
+
+      - name: Upload the release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: oostructureddiff-linux-x86_64
+          path: |
+            oostructureddiff-linux-x86_64
+            oostructureddiff-linux-x86_64.sha256
+
+  publish:
+    needs: build
+    uses: openOODA/openOODA/.github/workflows/auto-release.yml
+    with:
+      target_tag: ${{ github.ref_name }}
+      artifact_pattern: oostructureddiff-linux-x86_64
+    permissions:
+      contents: write
+
